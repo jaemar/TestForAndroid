@@ -22,6 +22,8 @@ import java.util.TimeZone;
 public class MainActivity extends ActionBarActivity implements MainActivityFragment.Callback {
     private MainActivityFragment fragment;
     private LoadTask loadTask;
+    private static List<Bitmap> results;
+    private String dateOnLabel;
 
     private static final SimpleDateFormat IMAGE_TIME_FORMAT = new SimpleDateFormat("yyyyMMddHH", Locale.US);
     private static final SimpleDateFormat LABEL_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:00", Locale.US);
@@ -37,6 +39,14 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
         fragment = (MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.fragment);
         fragment.setRetainInstance(false);
+
+        if (savedInstanceState != null) {
+            if (savedInstanceState.getBoolean("isLoaded")) {
+                dateOnLabel = savedInstanceState.getString("dateOnLabel");
+                fragment.setDateLabel(dateOnLabel);
+                fragment.showImage(results.get(0));
+            }
+        }
     }
 
 
@@ -63,9 +73,20 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
     }
 
     @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+
+        if (results != null) {
+            savedInstanceState.putBoolean("isLoaded", true);
+            savedInstanceState.putString("dateOnLabel", dateOnLabel);
+        }
+    }
+
+    @Override
     public void load() {
         URL imageUrl;
         Date dateToShow = new Date(new Date().getTime() - 30 * 60 * 1000);
+        dateOnLabel = LABEL_FORMAT.format(dateToShow);
         String url = String.format("http://www.jma.go.jp/jp/gms/imgs/5/infrared/1/%s00-00.png",
                 IMAGE_TIME_FORMAT.format(dateToShow));
         try {
@@ -80,9 +101,10 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
                 !loadTask.isCancelled()) {
             return;
         }
+
         loadTask = new LoadTask(fragment);
         loadTask.execute(imageUrl);
-        fragment.setDateLabel(LABEL_FORMAT.format(dateToShow));
+        fragment.setDateLabel(dateOnLabel);
     }
 
     static class LoadTask extends AsyncTask<URL, Void, List<Bitmap>> {
@@ -94,7 +116,7 @@ public class MainActivity extends ActionBarActivity implements MainActivityFragm
 
         @Override
         protected List<Bitmap> doInBackground(URL... params) {
-            List<Bitmap> results = new ArrayList<>();
+            results = new ArrayList<>();
             try {
                 for (URL url : params) {
                     if (isCancelled()) {
